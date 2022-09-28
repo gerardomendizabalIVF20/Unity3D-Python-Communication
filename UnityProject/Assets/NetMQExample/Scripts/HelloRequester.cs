@@ -14,31 +14,74 @@ public class HelloRequester : RunAbleThread
     ///     Request Hello message to server and receive message back. Do it 10 times.
     ///     Stop requesting when Running=false.
     /// </summary>
+    /// 
+
+    private bool SendMessageFlag = false;
+    private string MessageToSend;
+    bool keepGoin = true;
+
+    public void StopCommunication()
+    {
+        keepGoin = false;
+    }
+
+
+    public void SendMessage(string Message)
+    {
+        SetMessageToSend(Message);
+        SetSendMessageFlat();
+    }
+
+    public void SetMessageToSend(string Message)
+    {
+        MessageToSend = Message;
+    }
+
+    public void SetSendMessageFlat()
+    {
+        SendMessageFlag = true;
+    }
+
     protected override void Run()
     {
+
+        Debug.Log("Aqui");
         ForceDotNet.Force(); // this line is needed to prevent unity freeze after one use, not sure why yet
         using (RequestSocket client = new RequestSocket())
         {
-            client.Connect("tcp://localhost:5555");
+            client.Connect("tcp://localhost:5556");
+            int i = 1;
 
-            for (int i = 0; i < 10 && Running; i++)
+            while (keepGoin)
             {
-                Debug.Log("Sending Hello");
-                client.SendFrame("Hello");
-                // ReceiveFrameString() blocks the thread until you receive the string, but TryReceiveFrameString()
-                // do not block the thread, you can try commenting one and see what the other does, try to reason why
-                // unity freezes when you use ReceiveFrameString() and play and stop the scene without running the server
-//                string message = client.ReceiveFrameString();
-//                Debug.Log("Received: " + message);
-                string message = null;
-                bool gotMessage = false;
-                while (Running)
+                if (SendMessageFlag)
                 {
-                    gotMessage = client.TryReceiveFrameString(out message); // this returns true if it's successful
-                    if (gotMessage) break;
-                }
+                    Debug.Log("Sending " + MessageToSend);
+                    client.SendFrame(MessageToSend);
+                    // ReceiveFrameString() blocks the thread until you receive the string, but TryReceiveFrameString()
+                    // do not block the thread, you can try commenting one and see what the other does, try to reason why
+                    // unity freezes when you use ReceiveFrameString() and play and stop the scene without running the server
+                    //                string message = client.ReceiveFrameString();
+                    //                Debug.Log("Received: " + message);
+                    string message = null;
+                    bool gotMessage = false;
+                    while (Running)
+                    {
+                        gotMessage = client.TryReceiveFrameString(out message); // this returns true if it's successful
+                        if (gotMessage)
+                        {                         
+                            break;
+                        }
+                    }
 
-                if (gotMessage) Debug.Log("Received " + message);
+                    i++;
+                    if (gotMessage) Debug.Log("Received " + message);
+                    SendMessageFlag = false;
+                }
+               
+                if (i == 20)
+                    keepGoin = false;
+               
             }
         }
 
